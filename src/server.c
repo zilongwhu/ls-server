@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include "log.h"
 #include "utils.h"
+#include "error.h"
 #include "server.h"
 
 enum
@@ -310,17 +311,17 @@ void ls_srv_run(ls_srv_t server)
 			{
 				result = srv->_results[i];
 				ret = srv->_proc(srv, &result);
-				if ( NET_ERROR == srv->_results[i]._status )
-				{
-					DEBUG("sock[%d] has error, autoly closed by epex.", srv->_results[i]._sock_fd);
-				}
-				else if (  NET_EIDLE == srv->_results[i]._status )
-				{
-					DEBUG("sock[%d] enters idle, autoly closed by epex.", srv->_results[i]._sock_fd);
-				}
-				else if ( ret < 0 )
-				{
-					DEBUG("exec close sock[%d].", srv->_results[i]._sock_fd);
+                if ( NET_OP_NOTIFY == result._op_type || ret < 0 )
+                {
+                    if ( NET_ERROR == result._status )
+                    {
+                        DEBUG("sock[%d] has error[%s].", result._sock_fd, strerror_t(result._errno));
+                    }
+                    else if ( NET_EIDLE == result._status )
+                    {
+                        DEBUG("sock[%d] enters idle.", result._sock_fd);
+                    }
+					DEBUG("exec close sock[%d].", result._sock_fd);
 					epex_detach(srv->_epoll, srv->_results[i]._sock_fd, NULL);
 					SAFE_CLOSE(srv->_results[i]._sock_fd);
 				}
