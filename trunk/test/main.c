@@ -45,6 +45,14 @@ int proc(ls_srv_t server, const netresult_t *res)
     switch (res->_op_type)
     {
         case NET_OP_READ:
+            if (res->_status != NET_DONE)
+            {
+                if (res->_status == NET_ETIMEOUT || res->_status == NET_EIDLE)
+                    WARNING("read op timeout");
+                else if (res->_status == NET_ERROR)
+                    WARNING("read op error");
+                return -1;
+            }
             if (p->_state == REQ_LEN)
             {
                 NOTICE("read len[%d] from sock[%d] ok", p->_in_len, res->_sock_fd);
@@ -71,6 +79,14 @@ int proc(ls_srv_t server, const netresult_t *res)
             }
             break;
         case NET_OP_WRITE:
+            if (res->_status != NET_DONE)
+            {
+                if (res->_status == NET_ETIMEOUT || res->_status == NET_EIDLE)
+                    WARNING("write op timeout");
+                else if (res->_status == NET_ERROR)
+                    WARNING("write op error");
+                return -1;
+            }
             if (p->_state == RES_LEN)
             {
                 NOTICE("write len[%d] to sock[%d] ok", p->_out_len, res->_sock_fd);
