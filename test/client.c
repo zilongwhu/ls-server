@@ -36,7 +36,9 @@ int main(int argc, char *argv[])
     char buf[] = "ABcdefG HI JK lmN";
     int len = sizeof buf;
     write(sock, &len, sizeof len);
-    write(sock, buf, len);
+    write(sock, buf, len - 10);
+    sleep(1);
+    write(sock, buf + len - 10, 10);
     read(sock, &len, sizeof len);
     read(sock, buf, len);
     printf("%s\n", buf);
