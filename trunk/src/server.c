@@ -38,15 +38,16 @@ struct ls_server
 	epex_t _epoll;
 	LS_SRV_CALLBACK_FUN _proc;
 	LS_SRV_ON_ACCEPT_FUN _on_accept;
+	LS_SRV_ON_INIT_FUN _on_init;
 	LS_SRV_ON_CLOSE_FUN _on_close;
 	netresult_t _results[256];
 };
 
-ls_srv_t ls_srv_create(int size, LS_SRV_CALLBACK_FUN proc, LS_SRV_ON_ACCEPT_FUN on_accept, LS_SRV_ON_CLOSE_FUN on_close)
+ls_srv_t ls_srv_create(int size, LS_SRV_CALLBACK_FUN proc, LS_SRV_ON_ACCEPT_FUN on_accept, LS_SRV_ON_INIT_FUN on_init, LS_SRV_ON_CLOSE_FUN on_close)
 {
-	if ( size <= 0 || NULL == proc || NULL == on_accept || NULL == on_close )
+	if ( size <= 0 || NULL == proc || NULL == on_accept || NULL == on_init || NULL == on_close )
 	{
-		WARNING("invalid args: size[%d], proc[%p], on accept[%p], on close[%p].", size, proc, on_accept, on_close);
+		WARNING("invalid args: size[%d], proc[%p], on accept[%p], on init[%p], on close[%p].", size, proc, on_accept, on_init, on_close);
 		return NULL;
 	}
 	struct ls_server *srv = (struct ls_server *)calloc(1, sizeof(struct ls_server));
@@ -67,6 +68,7 @@ ls_srv_t ls_srv_create(int size, LS_SRV_CALLBACK_FUN proc, LS_SRV_ON_ACCEPT_FUN 
 	srv->_idle_timeout = -1;
 	srv->_proc = proc;
 	srv->_on_accept = on_accept;
+	srv->_on_init = on_init;
 	srv->_on_close = on_close;
 	return srv;
 }
@@ -287,6 +289,13 @@ void ls_srv_run(ls_srv_t server)
                                     srv->_on_close(srv, sock, user_args);
 									SAFE_CLOSE(sock);
 								}
+                                else if ( srv->_on_init(srv, sock, user_args) < 0 )
+                                {
+									WARNING("failed to init sock.");
+                                    epex_detach(srv->_epoll, srv->_listen_fd, NULL);
+                                    srv->_on_close(srv, sock, user_args);
+									SAFE_CLOSE(sock);
+                                }
 								else
 								{
 									DEBUG("accept sock[%d] ok.", sock);
@@ -315,19 +324,20 @@ void ls_srv_run(ls_srv_t server)
 				ret = srv->_proc(srv, &result);
                 if ( NET_OP_NOTIFY == result._op_type || ret < 0 )
                 {
+                    sock = result._sock_fd;
                     if ( NET_ERROR == result._status )
                     {
-                        WARNING("sock[%d] has error[%s].", result._sock_fd, strerror_t(result._errno));
+                        WARNING("sock[%d] has error[%s].", sock, strerror_t(result._errno));
                     }
                     else if ( NET_EIDLE == result._status )
                     {
-                        WARNING("sock[%d] enters idle.", result._sock_fd);
+                        WARNING("sock[%d] enters idle.", sock);
                     }
-					DEBUG("exec close sock[%d].", result._sock_fd);
+					DEBUG("exec close sock[%d].", sock);
                     void *user_args = NULL;
-					epex_detach(srv->_epoll, srv->_results[i]._sock_fd, &user_args);
+					epex_detach(srv->_epoll, sock, &user_args);
                     srv->_on_close(srv, sock, user_args);
-					SAFE_CLOSE(srv->_results[i]._sock_fd);
+					SAFE_CLOSE(sock);
 				}
 			}
 		}

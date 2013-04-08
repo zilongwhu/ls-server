@@ -25,9 +25,10 @@ typedef void *ls_srv_t;
 
 typedef int (*LS_SRV_CALLBACK_FUN)(ls_srv_t server, const netresult_t *);
 typedef int (*LS_SRV_ON_ACCEPT_FUN)(ls_srv_t server, int sock, void **user_args);
+typedef int (*LS_SRV_ON_INIT_FUN)(ls_srv_t server, int sock, void *user_args);
 typedef int (*LS_SRV_ON_CLOSE_FUN)(ls_srv_t server, int sock, void *user_args);
 
-ls_srv_t ls_srv_create(int size, LS_SRV_CALLBACK_FUN proc, LS_SRV_ON_ACCEPT_FUN on_accept, LS_SRV_ON_CLOSE_FUN on_close);
+ls_srv_t ls_srv_create(int size, LS_SRV_CALLBACK_FUN proc, LS_SRV_ON_ACCEPT_FUN on_accept, LS_SRV_ON_INIT_FUN on_init, LS_SRV_ON_CLOSE_FUN on_close);
 void ls_srv_close(ls_srv_t server);
 void ls_srv_stop(ls_srv_t server);
 int ls_srv_listen(ls_srv_t server, const struct sockaddr *addr, socklen_t addrlen, int backlog);
