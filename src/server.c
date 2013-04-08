@@ -38,14 +38,15 @@ struct ls_server
 	epex_t _epoll;
 	LS_SRV_CALLBACK_FUN _proc;
 	LS_SRV_ON_ACCEPT_FUN _on_accept;
+	LS_SRV_ON_CLOSE_FUN _on_close;
 	netresult_t _results[256];
 };
 
-ls_srv_t ls_srv_create(int size, LS_SRV_CALLBACK_FUN proc, LS_SRV_ON_ACCEPT_FUN on_accept)
+ls_srv_t ls_srv_create(int size, LS_SRV_CALLBACK_FUN proc, LS_SRV_ON_ACCEPT_FUN on_accept, LS_SRV_ON_CLOSE_FUN on_close)
 {
-	if ( size <= 0 || NULL == proc || NULL == on_accept )
+	if ( size <= 0 || NULL == proc || NULL == on_accept || NULL == on_close )
 	{
-		WARNING("invalid args: size[%d], proc[%p], on accept[%p].", size, proc, on_accept);
+		WARNING("invalid args: size[%d], proc[%p], on accept[%p], on close[%p].", size, proc, on_accept, on_close);
 		return NULL;
 	}
 	struct ls_server *srv = (struct ls_server *)calloc(1, sizeof(struct ls_server));
@@ -66,6 +67,7 @@ ls_srv_t ls_srv_create(int size, LS_SRV_CALLBACK_FUN proc, LS_SRV_ON_ACCEPT_FUN 
 	srv->_idle_timeout = -1;
 	srv->_proc = proc;
 	srv->_on_accept = on_accept;
+	srv->_on_close = on_close;
 	return srv;
 }
 
@@ -267,32 +269,22 @@ void ls_srv_run(ls_srv_t server)
 			{
 				switch (srv->_results[i]._op_type)
 				{
-					case NET_OP_NOTIFY:
-						if ( NET_ERROR == srv->_results[i]._status )
-						{
-							WARNING("listen fd error, errno[%d].", srv->_results[i]._errno);
-							listen_ok = 0;
-						}
-						else
-						{
-							WARNING("unexpected status[%hu], should not run to here.", srv->_results[i]._status);
-						}
-						break;
 					case NET_OP_ACCEPT:
 						do
 						{
 							sock = accept(srv->_listen_fd, NULL, NULL);
 							if ( sock >= 0 )
 							{
-								if ( !epex_attach(srv->_epoll, sock, NULL, srv->_idle_timeout) )
-								{
-									SAFE_CLOSE(sock);
-									WARNING("failed to attach sock to epex.");
-								}
-								else if ( srv->_on_accept(srv, sock) < 0 )
+                                void *user_args = NULL;
+								if ( srv->_on_accept(srv, sock, &user_args) < 0 )
 								{
 									WARNING("on accept failed, close sock[%d].", sock);
-									epex_detach(srv->_epoll, sock, NULL);
+									SAFE_CLOSE(sock);
+								}
+                                else if ( !epex_attach(srv->_epoll, sock, user_args, srv->_idle_timeout) )
+								{
+									WARNING("failed to attach sock to epex.");
+                                    srv->_on_close(srv, sock, user_args);
 									SAFE_CLOSE(sock);
 								}
 								else
@@ -303,7 +295,17 @@ void ls_srv_run(ls_srv_t server)
 						} while (sock >= 0);
 						break;
 					default:
-						WARNING("unexpected op type[%hu], should not run to here.", srv->_results[i]._op_type);
+						FATAL("listen fd, unexpected op type[%hu], should not run to here.", srv->_results[i]._op_type);
+                        epex_detach(srv->_epoll, srv->_listen_fd, NULL);
+                        if (SERVER_NOT_SHARED == srv->_status)
+                        {
+                            SAFE_CLOSE(srv->_listen_fd);
+                        }
+                        else
+                        {
+                            srv->_on_close(srv, srv->_listen_fd, NULL);
+                        }
+                        srv->_listen_fd = -1;
 						break;
 				}
 			}
@@ -315,14 +317,16 @@ void ls_srv_run(ls_srv_t server)
                 {
                     if ( NET_ERROR == result._status )
                     {
-                        DEBUG("sock[%d] has error[%s].", result._sock_fd, strerror_t(result._errno));
+                        WARNING("sock[%d] has error[%s].", result._sock_fd, strerror_t(result._errno));
                     }
                     else if ( NET_EIDLE == result._status )
                     {
-                        DEBUG("sock[%d] enters idle.", result._sock_fd);
+                        WARNING("sock[%d] enters idle.", result._sock_fd);
                     }
 					DEBUG("exec close sock[%d].", result._sock_fd);
-					epex_detach(srv->_epoll, srv->_results[i]._sock_fd, NULL);
+                    void *user_args = NULL;
+					epex_detach(srv->_epoll, srv->_results[i]._sock_fd, &user_args);
+                    srv->_on_close(srv, sock, user_args);
 					SAFE_CLOSE(srv->_results[i]._sock_fd);
 				}
 			}
