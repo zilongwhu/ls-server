@@ -304,6 +304,7 @@ void ls_srv_run(ls_srv_t server)
 						} while (sock >= 0);
 						break;
 					default:
+                        listen_ok = 0;
 						FATAL("listen fd, unexpected op type[%hu], should not run to here.", srv->_results[i]._op_type);
                         epex_detach(srv->_epoll, srv->_listen_fd, NULL);
                         if (SERVER_NOT_SHARED == srv->_status)
