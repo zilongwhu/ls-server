@@ -35,6 +35,7 @@ struct ls_server
     int _listen_fd;
     uint32_t _status;
     int _idle_timeout;
+    void *_user_arg;
     epex_t _epoll;
     LS_SRV_CALLBACK_FUN _proc;
     LS_SRV_ON_ACCEPT_FUN _on_accept;
@@ -71,6 +72,27 @@ ls_srv_t ls_srv_create(int size, LS_SRV_CALLBACK_FUN proc, LS_SRV_ON_ACCEPT_FUN 
     srv->_on_init = on_init;
     srv->_on_close = on_close;
     return srv;
+}
+
+void ls_srv_set_userarg(ls_srv_t server, void *userarg)
+{
+    if ( NULL == server )
+    {
+        WARNING("invalid args: server[%p].", server);
+        return ;
+    }
+    struct ls_server *srv = (struct ls_server *)server;
+    srv->_user_arg = userarg;
+}
+void *ls_srv_get_userarg(ls_srv_t server)
+{
+    if ( NULL == server )
+    {
+        WARNING("invalid args: server[%p].", server);
+        return NULL;
+    }
+    struct ls_server *srv = (struct ls_server *)server;
+    return srv->_user_arg;
 }
 
 void ls_srv_close(ls_srv_t server)
