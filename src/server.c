@@ -355,9 +355,11 @@ void ls_srv_run(ls_srv_t server)
                         WARNING("sock[%d] enters idle.", sock);
                     }
                     DEBUG("exec close sock[%d].", sock);
-                    void *user_args = NULL;
-                    epex_detach(srv->_epoll, sock, &user_args);
-                    srv->_on_close(srv, sock, user_args);
+                    if (NET_OP_NOTIFY != result._op_type)
+                    {
+                        epex_detach(srv->_epoll, sock, NULL);
+                    }
+                    srv->_on_close(srv, sock, result._user_ptr2);
                     SAFE_CLOSE(sock);
                 }
             }

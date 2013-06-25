@@ -53,6 +53,9 @@ class Server
             ls_srv_close(_server);
         }
 
+        int read_timeout() const { return _read_timeout; }
+        int write_timeout() const { return _write_timeout; }
+
         void run()
         {
             ls_srv_run(_server);
@@ -62,14 +65,21 @@ class Server
             ls_srv_stop(_server);
         }
 
-        virtual Connection *on_accept(int sock);
-        virtual int on_init(Connection *conn);
-        virtual int on_process(Connection *conn);
-        virtual int on_timeout(Connection *conn);
-        virtual int on_idle(Connection *conn);
-        virtual int on_error(Connection *conn);
-        virtual int on_close(Connection *conn);
-    private:
+        int listen(const struct sockaddr *addr, socklen_t addrlen, int backlog)
+        {
+            return ls_srv_listen(_server, addr, addrlen, backlog);
+        }
+
+        virtual Connection *on_accept(int sock) = 0;
+        virtual int on_init(Connection *conn) = 0;
+        virtual int on_process(Connection *conn) = 0;
+        virtual int on_timeout(Connection *conn) = 0;
+        virtual int on_idle(Connection *conn) = 0;
+        virtual int on_error(Connection *conn) = 0;
+        virtual int on_close(Connection *conn) = 0;
+    protected:
+        int _read_timeout;
+        int _write_timeout;
         ls_srv_t _server;
 };
 
