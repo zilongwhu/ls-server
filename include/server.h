@@ -29,14 +29,20 @@ typedef int (*LS_SRV_ON_INIT_FUN)(ls_srv_t server, int sock, void *user_args);
 typedef int (*LS_SRV_ON_CLOSE_FUN)(ls_srv_t server, int sock, void *user_args);
 
 ls_srv_t ls_srv_create(int size, LS_SRV_CALLBACK_FUN proc, LS_SRV_ON_ACCEPT_FUN on_accept, LS_SRV_ON_INIT_FUN on_init, LS_SRV_ON_CLOSE_FUN on_close);
-void ls_srv_close(ls_srv_t server);
-void ls_srv_stop(ls_srv_t server);
+
+void ls_srv_set_userarg(ls_srv_t server, void *userarg);
+void *ls_srv_get_userarg(ls_srv_t server);
+int ls_srv_set_idle_timeout(ls_srv_t server, int timeout);
+
 int ls_srv_listen(ls_srv_t server, const struct sockaddr *addr, socklen_t addrlen, int backlog);
 int ls_srv_set_listen_fd(ls_srv_t server, int listen_fd);
-int ls_srv_set_idle_timeout(ls_srv_t server, int timeout);
+
 int ls_srv_read(ls_srv_t server, int sock_fd, void *buf, size_t size, void *user_arg, int ms);
 int ls_srv_read_any(ls_srv_t server, int sock_fd, void *buf, size_t size, void *user_arg, int ms);
 int ls_srv_write(ls_srv_t server, int sock_fd, const void *buf, size_t size, void *user_arg, int ms);
+
 void ls_srv_run(ls_srv_t server);
+void ls_srv_stop(ls_srv_t server);
+void ls_srv_close(ls_srv_t server);
 
 #endif
