@@ -17,10 +17,11 @@
  */
 
 #include "log.h"
-#include "csrv.h"
+#include "server.h"
 #include <ctype.h>
 #include <stdlib.h>
 #include <strings.h>
+#include <iostream>
 
 class SimpleServer;
 
@@ -93,6 +94,8 @@ int main(int argc, char *argv[])
     addr.sin_family = AF_INET;
     addr.sin_port = htons(7654);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
+
+    std::cout << strerror(1) << std::endl;
 
     SimpleServer ss;
     ss.listen((struct sockaddr *)&addr, sizeof addr, 5);

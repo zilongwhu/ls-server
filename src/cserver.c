@@ -20,7 +20,7 @@
 #include "log.h"
 #include "utils.h"
 #include "error.h"
-#include "server.h"
+#include "cserver.h"
 
 enum
 {
