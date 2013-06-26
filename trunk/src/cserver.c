@@ -294,39 +294,43 @@ void ls_srv_run(ls_srv_t server)
                 switch (srv->_results[i]._op_type)
                 {
                     case NET_OP_ACCEPT:
-                        sock = accept(srv->_listen_fd, NULL, NULL);
-                        if ( sock >= 0 )
+                        do
                         {
-                            void *user_args = NULL;
-                            if ( srv->_on_accept(srv, sock, &user_args) < 0 )
+                            sock = accept(srv->_listen_fd, NULL, NULL);
+                            if ( sock >= 0 )
                             {
-                                WARNING("on accept failed, close sock[%d].", sock);
-                                SAFE_CLOSE(sock);
+                                void *user_args = NULL;
+                                if ( srv->_on_accept(srv, sock, &user_args) < 0 )
+                                {
+                                    WARNING("on accept failed, close sock[%d].", sock);
+                                    SAFE_CLOSE(sock);
+                                }
+                                else if ( !epex_attach(srv->_epoll, sock, user_args,
+                                            srv->_idle_timeout) )
+                                {
+                                    WARNING("failed to attach sock[%d] to epex.", sock);
+                                    srv->_on_close(srv, sock, user_args);
+                                    SAFE_CLOSE(sock);
+                                }
+                                else if ( srv->_on_init(srv, sock, user_args) < 0 )
+                                {
+                                    WARNING("failed to init sock[%d], need to detach.", sock);
+                                    epex_detach(srv->_epoll, sock, NULL);
+                                }
+                                else
+                                {
+                                    DEBUG("accept sock[%d] ok.", sock);
+                                }
                             }
-                            else if ( !epex_attach(srv->_epoll, sock, user_args, srv->_idle_timeout) )
-                            {
-                                WARNING("failed to attach sock to epex.");
-                                srv->_on_close(srv, sock, user_args);
-                                SAFE_CLOSE(sock);
-                            }
-                            else if ( srv->_on_init(srv, sock, user_args) < 0 )
-                            {
-                                WARNING("failed to init sock.");
-                                epex_detach(srv->_epoll, sock, NULL);
-                                srv->_on_close(srv, sock, user_args);
-                                SAFE_CLOSE(sock);
-                            }
-                            else
-                            {
-                                DEBUG("accept sock[%d] ok.", sock);
-                            }
-                        }
+                        } while(sock >= 0);
                         break;
-                    default:
-                        listen_ok = 0;
-                        FATAL("listen fd, unexpected op type[%hu], should not run to here.",
-                                srv->_results[i]._op_type);
-                        epex_detach(srv->_epoll, srv->_listen_fd, NULL);
+                    case NET_OP_NOTIFY:
+                        if ( NET_ERROR == result._status )
+                        {
+                            WARNING("listen fd[%d] has error[%s].",
+                                    srv->_listen_fd, strerror_t(srv->_results[i]._errno));
+                        }
+                        WARNING("exec close listen fd[%d].", srv->_listen_fd);
                         if (SERVER_NOT_SHARED == srv->_status)
                         {
                             SAFE_CLOSE(srv->_listen_fd);
@@ -336,6 +340,12 @@ void ls_srv_run(ls_srv_t server)
                             srv->_on_close(srv, srv->_listen_fd, NULL);
                         }
                         srv->_listen_fd = -1;
+                        listen_ok = 0;
+                        break;
+                    default:
+                        FATAL("listen fd, unexpected op type[%hu] and status[%hu],"
+                                " should not run to here.",
+                                srv->_results[i]._op_type, srv->_results[i]._status);
                         break;
                 }
             }
@@ -355,7 +365,7 @@ void ls_srv_run(ls_srv_t server)
                     }
                     else
                     {
-                        WARNING("sock[%d] is detached by user.", sock);
+                        WARNING("sock[%d] is detached.", sock);
                     }
                     DEBUG("exec close sock[%d].", sock);
                     srv->_on_close(srv, sock, result._user_ptr2);
