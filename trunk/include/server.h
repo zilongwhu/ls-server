@@ -76,6 +76,7 @@ class Server
         virtual int on_timeout(Connection *conn) = 0;
         virtual int on_idle(Connection *conn) = 0;
         virtual int on_error(Connection *conn) = 0;
+        virtual int on_peer_close(Connection *conn) = 0;
         virtual int on_close(Connection *conn) = 0;
     protected:
         int _read_timeout;
