@@ -80,6 +80,10 @@ class SimpleServer: public Server
         {
             return -1;
         }
+        int on_peer_close(Connection *conn)
+        {
+            return -1;
+        }
         int on_close(Connection *conn)
         {
             delete conn;
