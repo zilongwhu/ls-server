@@ -342,10 +342,9 @@ void ls_srv_run(ls_srv_t server)
             else
             {
                 result = srv->_results[i];
-                ret = srv->_proc(srv, &result);
-                if ( NET_OP_NOTIFY == result._op_type || ret < 0 )
+                sock = result._sock_fd;
+                if ( NET_OP_NOTIFY == result._op_type)
                 {
-                    sock = result._sock_fd;
                     if ( NET_ERROR == result._status )
                     {
                         WARNING("sock[%d] has error[%s].", sock, strerror_t(result._errno));
@@ -354,13 +353,22 @@ void ls_srv_run(ls_srv_t server)
                     {
                         WARNING("sock[%d] enters idle.", sock);
                     }
-                    DEBUG("exec close sock[%d].", sock);
-                    if (NET_OP_NOTIFY != result._op_type)
+                    else
                     {
-                        epex_detach(srv->_epoll, sock, NULL);
+                        WARNING("sock[%d] is detached by user.", sock);
                     }
+                    DEBUG("exec close sock[%d].", sock);
                     srv->_on_close(srv, sock, result._user_ptr2);
                     SAFE_CLOSE(sock);
+                }
+                else
+                {
+                    ret = srv->_proc(srv, &result);
+                    if (ret < 0)
+                    {
+                        DEBUG("exec detach sock[%d].", sock);
+                        epex_detach(srv->_epoll, sock, NULL);
+                    }
                 }
             }
         }
