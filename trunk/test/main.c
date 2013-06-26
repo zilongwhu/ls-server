@@ -17,7 +17,7 @@
  */
 
 #include "log.h"
-#include "server.h"
+#include "cserver.h"
 #include <ctype.h>
 #include <stdlib.h>
 #include <strings.h>

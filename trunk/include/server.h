@@ -1,12 +1,12 @@
 /*
  * =====================================================================================
  *
- *       Filename:  server.h
+ *       Filename:  csrv.h
  *
- *    Description:  lsnet server framework interface
+ *    Description:  cpp wrapper
  *
  *        Version:  1.0
- *        Created:  2012年05月25日 10时35分37秒
+ *        Created:  2013年06月25日 15时43分34秒
  *       Revision:  none
  *       Compiler:  gcc
  *
@@ -15,34 +15,72 @@
  *
  * =====================================================================================
  */
-#ifndef __LS_SERVER_H__
-#define __LS_SERVER_H__
 
-#include <sys/socket.h>
-#include "exnet.h"
+#ifndef __LS_CPP_SERVER_H__
+#define __LS_CPP_SERVER_H__
 
-typedef void *ls_srv_t;
+#include <string.h>
+#include "cserver.h"
 
-typedef int (*LS_SRV_CALLBACK_FUN)(ls_srv_t server, const netresult_t *);
-typedef int (*LS_SRV_ON_ACCEPT_FUN)(ls_srv_t server, int sock, void **user_args);
-typedef int (*LS_SRV_ON_INIT_FUN)(ls_srv_t server, int sock, void *user_args);
-typedef int (*LS_SRV_ON_CLOSE_FUN)(ls_srv_t server, int sock, void *user_args);
+class Connection
+{
+    public:
+        Connection()
+        {
+            ::bzero(&_req_head, sizeof _req_head);
+            ::bzero(&_res_head, sizeof _res_head);
+            _req_head._magic_num = MAGIC_NUM;
+            _res_head._magic_num = MAGIC_NUM;
+        }
+        virtual ~ Connection() { }
 
-ls_srv_t ls_srv_create(int size, LS_SRV_CALLBACK_FUN proc, LS_SRV_ON_ACCEPT_FUN on_accept, LS_SRV_ON_INIT_FUN on_init, LS_SRV_ON_CLOSE_FUN on_close);
+        virtual char *get_req_buf(unsigned int &len) = 0;
+        virtual char *get_res_buf(unsigned int &len) = 0;
+    public:
+        net_head_t _req_head;
+        net_head_t _res_head;
+};
 
-void ls_srv_set_userarg(ls_srv_t server, void *userarg);
-void *ls_srv_get_userarg(ls_srv_t server);
-int ls_srv_set_idle_timeout(ls_srv_t server, int timeout);
+class Server
+{
+    private:
+        Server(const Server &);
+        Server &operator =(const Server &);
+    public:
+        Server();
+        virtual ~Server()
+        {
+            ls_srv_close(_server);
+        }
 
-int ls_srv_listen(ls_srv_t server, const struct sockaddr *addr, socklen_t addrlen, int backlog);
-int ls_srv_set_listen_fd(ls_srv_t server, int listen_fd);
+        int read_timeout() const { return _read_timeout; }
+        int write_timeout() const { return _write_timeout; }
 
-int ls_srv_read(ls_srv_t server, int sock_fd, void *buf, size_t size, void *user_arg, int ms);
-int ls_srv_read_any(ls_srv_t server, int sock_fd, void *buf, size_t size, void *user_arg, int ms);
-int ls_srv_write(ls_srv_t server, int sock_fd, const void *buf, size_t size, void *user_arg, int ms);
+        void run()
+        {
+            ls_srv_run(_server);
+        }
+        void stop()
+        {
+            ls_srv_stop(_server);
+        }
 
-void ls_srv_run(ls_srv_t server);
-void ls_srv_stop(ls_srv_t server);
-void ls_srv_close(ls_srv_t server);
+        int listen(const struct sockaddr *addr, socklen_t addrlen, int backlog)
+        {
+            return ls_srv_listen(_server, addr, addrlen, backlog);
+        }
+
+        virtual Connection *on_accept(int sock) = 0;
+        virtual int on_init(Connection *conn) = 0;
+        virtual int on_process(Connection *conn) = 0;
+        virtual int on_timeout(Connection *conn) = 0;
+        virtual int on_idle(Connection *conn) = 0;
+        virtual int on_error(Connection *conn) = 0;
+        virtual int on_close(Connection *conn) = 0;
+    protected:
+        int _read_timeout;
+        int _write_timeout;
+        ls_srv_t _server;
+};
 
 #endif
