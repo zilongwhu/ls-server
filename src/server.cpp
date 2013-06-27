@@ -17,21 +17,30 @@
  */
 #include <stdint.h>
 #include "log.h"
+#include "error.h"
 #include "server.h"
 
 static int Server_on_proc(ls_srv_t server, const netresult_t *net)
 {
     Server *ps = (Server *)ls_srv_get_userarg(server);
     Connection *conn = (Connection *)net->_user_ptr2;
+    int sock = net->_sock_fd;
     switch (net->_status)
     {
         case NET_ECLOSED:
+            TRACE("sock[%d] is closed by peer", sock);
             return ps->on_peer_close(conn);
         case NET_ETIMEOUT:
+            if (net->_op_type == NET_OP_READ)
+                TRACE("read timeout on sock[%d]", sock);
+            else
+                TRACE("write timeout on sock[%d]", sock);
             return ps->on_timeout(conn);
         case NET_EIDLE:
+            TRACE("sock[%d] becomes idle", sock);
             return ps->on_idle(conn);
         case NET_ERROR:
+            TRACE("sock[%d] has error[%s]", sock, strerror_t(net->_errno));
             return ps->on_error(conn);
         case NET_DONE:
             break;
@@ -41,7 +50,6 @@ static int Server_on_proc(ls_srv_t server, const netresult_t *net)
     }
     int ret;
     void *buf;
-    int sock = net->_sock_fd;
     intptr_t status = (intptr_t)net->_user_ptr;
     DEBUG("status = %d", (int)status);
     switch (net->_op_type)
