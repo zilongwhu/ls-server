@@ -123,6 +123,7 @@ int main(int argc, char *argv[])
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     SimpleServer ss;
+    ss.set_read_timeout(10);
     ss.listen((struct sockaddr *)&addr, sizeof addr, 5);
     ss.run();
 
