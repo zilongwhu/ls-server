@@ -45,6 +45,7 @@ int main(int argc, char *argv[])
     connect(sock, (struct sockaddr *)&addr, sizeof addr);
     char buf[] = "ABcdefG HI JK lmN";
     net_head_t reqhead, reshead;
+    reqhead._magic_num = MAGIC_NUM;
     int len = sizeof buf;
     reqhead._body_len = len;
     write(sock, &reqhead, sizeof reqhead);

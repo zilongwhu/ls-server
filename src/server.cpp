@@ -40,7 +40,7 @@ static int Server_on_proc(ls_srv_t server, const netresult_t *net)
             return -1;
     }
     int ret;
-    char *buf;
+    void *buf;
     int sock = net->_sock_fd;
     intptr_t status = (intptr_t)net->_user_ptr;
     DEBUG("status = %d", (int)status);
