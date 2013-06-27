@@ -21,7 +21,6 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <strings.h>
-#include <iostream>
 
 class SimpleServer;
 
@@ -31,14 +30,12 @@ class SimpleConn: public Connection
         SimpleConn() { }
         ~ SimpleConn() { }
 
-        char *get_req_buf(unsigned int &len)
+        char *get_req_buf()
         {
-            len = sizeof _req_buf;
             return _req_buf;
         }
-        char *get_res_buf(unsigned int &len)
+        char *get_res_buf()
         {
-            len = _res_head._body_len;
             return _res_buf;
         }
         friend class SimpleServer;
@@ -98,8 +95,6 @@ int main(int argc, char *argv[])
     addr.sin_family = AF_INET;
     addr.sin_port = htons(7654);
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
-
-    std::cout << strerror(1) << std::endl;
 
     SimpleServer ss;
     ss.listen((struct sockaddr *)&addr, sizeof addr, 5);

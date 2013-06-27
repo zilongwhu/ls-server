@@ -35,8 +35,8 @@ class Connection
         }
         virtual ~ Connection() { }
 
-        virtual char *get_req_buf(unsigned int &len) = 0;
-        virtual char *get_res_buf(unsigned int &len) = 0;
+        virtual char *get_req_buf() = 0;
+        virtual char *get_res_buf() = 0;
     public:
         int _sock_fd;
         net_head_t _req_head;
