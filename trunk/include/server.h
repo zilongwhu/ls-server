@@ -27,6 +27,7 @@ class Connection
     public:
         Connection()
         {
+            _sock_fd = -1;
             ::bzero(&_req_head, sizeof _req_head);
             ::bzero(&_res_head, sizeof _res_head);
             _req_head._magic_num = MAGIC_NUM;
@@ -37,6 +38,7 @@ class Connection
         virtual char *get_req_buf(unsigned int &len) = 0;
         virtual char *get_res_buf(unsigned int &len) = 0;
     public:
+        int _sock_fd;
         net_head_t _req_head;
         net_head_t _res_head;
 };
@@ -55,6 +57,17 @@ class Server
 
         int read_timeout() const { return _read_timeout; }
         int write_timeout() const { return _write_timeout; }
+        void set_read_timeout(int read_timeout) { _read_timeout = read_timeout; }
+        void set_write_timeout(int write_timeout) { _write_timeout = write_timeout; }
+
+        void set_idle_timeout(int idle_timeout)
+        {
+            ls_srv_set_idle_timeout(_server, idle_timeout);
+        }
+        int listen(const struct sockaddr *addr, socklen_t addrlen, int backlog)
+        {
+            return ls_srv_listen(_server, addr, addrlen, backlog);
+        }
 
         void run()
         {
@@ -63,11 +76,6 @@ class Server
         void stop()
         {
             ls_srv_stop(_server);
-        }
-
-        int listen(const struct sockaddr *addr, socklen_t addrlen, int backlog)
-        {
-            return ls_srv_listen(_server, addr, addrlen, backlog);
         }
 
         virtual Connection *on_accept(int sock) = 0;
