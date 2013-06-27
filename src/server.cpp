@@ -150,6 +150,7 @@ static int Server_on_init(ls_srv_t server, int sock, void *user_args)
 {
     Server *ps = (Server *)ls_srv_get_userarg(server);
     Connection *conn = (Connection *)user_args;
+    conn->_sock_fd = sock;
     int ret = ps->on_init(conn);
     if (ret < 0)
     {
@@ -170,5 +171,5 @@ Server::Server()
 {
     _server = ls_srv_create(1024, Server_on_proc, Server_on_accept, Server_on_init, Server_on_close);
     ls_srv_set_userarg(_server, this);
-    _read_timeout = _write_timeout = 10;
+    _read_timeout = _write_timeout = -1;
 }
