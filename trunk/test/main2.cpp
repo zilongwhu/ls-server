@@ -27,21 +27,57 @@ class SimpleServer;
 class SimpleConn: public Connection
 {
     public:
-        SimpleConn() { }
-        ~ SimpleConn() { }
-
-        char *get_req_buf()
+        SimpleConn()
         {
+            _req_buf = NULL;
+            _res_buf = NULL;
+        }
+        ~ SimpleConn()
+        {
+            if (_req_buf)
+            {
+                free(_req_buf);
+                _req_buf = NULL;
+            }
+            if (_res_buf)
+            {
+                free(_res_buf);
+                _res_buf = NULL;
+            }
+        }
+
+        void *get_req_buf()
+        {
+            if (_req_head._body_len > 1024)
+            {
+                WARNING("too long body len[%u]", _req_head._body_len);
+                return NULL;
+            }
+            _req_buf = (char *)malloc(_req_head._body_len);
             return _req_buf;
         }
-        char *get_res_buf()
+        int on_process()
+        {
+            _res_buf = (char *)malloc(_req_head._body_len);
+            if (NULL == _res_buf)
+            {
+                WARNING("failed to alloc mem for _res_buf");
+                return -1;
+            }
+            for (unsigned int i = 0; i < _req_head._body_len; ++i)
+            {
+                _res_buf[i] = ::tolower(_req_buf[i]);
+            }
+            _res_head._body_len = _req_head._body_len;
+            return 0;
+        }
+        void *get_res_buf()
         {
             return _res_buf;
         }
-        friend class SimpleServer;
     private:
-        char _req_buf[256];
-        char _res_buf[256];
+        char *_req_buf;
+        char *_res_buf;
 };
 
 class SimpleServer: public Server
@@ -53,16 +89,6 @@ class SimpleServer: public Server
         }
         int on_init(Connection *conn)
         {
-            return 0;
-        }
-        int on_process(Connection *conn)
-        {
-            SimpleConn *sc = (SimpleConn *)conn;
-            for (unsigned int i = 0; i < sc->_req_head._body_len; ++i)
-            {
-                sc->_res_buf[i] = ::tolower(sc->_req_buf[i]);
-            }
-            sc->_res_head._body_len = sc->_req_head._body_len;
             return 0;
         }
         int on_timeout(Connection *conn)
