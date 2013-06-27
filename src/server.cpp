@@ -41,7 +41,6 @@ static int Server_on_proc(ls_srv_t server, const netresult_t *net)
     }
     int ret;
     char *buf;
-    unsigned int len = 0;
     int sock = net->_sock_fd;
     intptr_t status = (intptr_t)net->_user_ptr;
     DEBUG("status = %d", (int)status);
@@ -57,16 +56,10 @@ static int Server_on_proc(ls_srv_t server, const netresult_t *net)
             }
             else if (status == 1)
             {
-                buf = conn->get_req_buf(len);
+                buf = conn->get_req_buf();
                 if (buf == NULL)
                 {
                     WARNING("failed to get req_buf for sock[%d]", sock);
-                    return -1;
-                }
-                if (len < conn->_req_head._body_len)
-                {
-                    WARNING("not sufficient req_buf[%u < %u] for sock[%d]",
-                            len, conn->_req_head._body_len, sock);
                     return -1;
                 }
                 status = 2;
@@ -83,13 +76,6 @@ static int Server_on_proc(ls_srv_t server, const netresult_t *net)
                     WARNING("failed to process request for sock[%d]", sock);
                     return -1;
                 }
-                buf = conn->get_res_buf(len);
-                if (buf == NULL)
-                {
-                    WARNING("failed to get res_buf for sock[%d]", sock);
-                    return -1;
-                }
-                conn->_res_head._body_len = len;
                 status = 3;
                 TRACE("process request for sock[%d] ok, try to write conn->_res_head", sock);
                 return ls_srv_write(server, sock, &conn->_res_head, sizeof conn->_res_head,
@@ -104,16 +90,10 @@ static int Server_on_proc(ls_srv_t server, const netresult_t *net)
         case NET_OP_WRITE:
             if (status == 3)
             {
-                buf = conn->get_res_buf(len);
+                buf = conn->get_res_buf();
                 if (buf == NULL)
                 {
                     WARNING("failed to get res_buf for sock[%d]", sock);
-                    return -1;
-                }
-                if (len != conn->_res_head._body_len)
-                {
-                    WARNING("len[%u] != conn->_res_head.body_len[%u] for sock[%d]",
-                            len, conn->_res_head._body_len, sock);
                     return -1;
                 }
                 status = 4;
