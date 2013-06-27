@@ -56,6 +56,11 @@ static int Server_on_proc(ls_srv_t server, const netresult_t *net)
             }
             else if (status == 1)
             {
+                if (conn->_req_head._magic_num != MAGIC_NUM)
+                {
+                    WARNING("failed to chek magic num for sock[%d]", sock);
+                    return -1;
+                }
                 buf = conn->get_req_buf();
                 if (buf == NULL)
                 {
@@ -76,6 +81,7 @@ static int Server_on_proc(ls_srv_t server, const netresult_t *net)
                     WARNING("failed to process request for sock[%d]", sock);
                     return -1;
                 }
+                conn->_res_head._magic_num = MAGIC_NUM;
                 status = 3;
                 TRACE("process request for sock[%d] ok, try to write conn->_res_head", sock);
                 return ls_srv_write(server, sock, &conn->_res_head, sizeof conn->_res_head,
