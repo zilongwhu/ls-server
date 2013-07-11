@@ -11,4 +11,6 @@ client2: test/client2.cpp
 clean:
 	rm liblssrv.so
 	rm server
+	rm server2
 	rm client
+	rm client2

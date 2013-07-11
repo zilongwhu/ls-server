@@ -92,7 +92,7 @@ static int Server_callback(ls_srv_t server)
         DLIST_REMOVE(cur);
 
         sock = conn->_sock_fd;
-        if (!ls_srv_enable_notify(server, sock))
+        if (ls_srv_enable_notify(server, sock) < 0)
         {
             FATAL("sock[%d] is processed, but failed to enable notification", sock);
         }
@@ -173,7 +173,7 @@ static int Server_on_proc(ls_srv_t server, const netresult_t *net)
                     conn->_status = Connection::ST_PROCESSING_REQUEST;
                     TRACE("read req_body[%u] for sock[%d] ok, try to process conn",
                             conn->_req_head._body_len, sock);
-                    if (!ls_srv_disable_notify(server, sock))
+                    if (ls_srv_disable_notify(server, sock) < 0)
                     {
                         WARNING("failed to disable notification for sock[%d]", sock);
                         return -1;

@@ -46,7 +46,7 @@ class SimpleConn: public Connection
             }
         }
 
-        void *get_req_buf()
+        void *get_request_buffer()
         {
             if (_req_head._body_len > 1024)
             {
@@ -56,6 +56,11 @@ class SimpleConn: public Connection
             _req_buf = (char *)malloc(_req_head._body_len);
             return _req_buf;
         }
+        void *get_response_buffer()
+        {
+            return _res_buf;
+        }
+
         int on_process()
         {
             _res_buf = (char *)malloc(_req_head._body_len);
@@ -71,9 +76,25 @@ class SimpleConn: public Connection
             _res_head._body_len = _req_head._body_len;
             return 0;
         }
-        void *get_res_buf()
+        int on_timeout()
         {
-            return _res_buf;
+            return -1;
+        }
+        int on_idle()
+        {
+            return -1;
+        }
+        int on_error()
+        {
+            return -1;
+        }
+        int on_peer_close()
+        {
+            return -1;
+        }
+        int on_close()
+        {
+            return 0;
         }
     private:
         char *_req_buf;
@@ -87,30 +108,9 @@ class SimpleServer: public Server
         {
             return new SimpleConn;
         }
-        int on_init(Connection *conn)
-        {
-            return 0;
-        }
-        int on_timeout(Connection *conn)
-        {
-            return -1;
-        }
-        int on_idle(Connection *conn)
-        {
-            return -1;
-        }
-        int on_error(Connection *conn)
-        {
-            return -1;
-        }
-        int on_peer_close(Connection *conn)
-        {
-            return -1;
-        }
-        int on_close(Connection *conn)
+        void free_conn(Connection *conn)
         {
             delete conn;
-            return 0;
         }
 };
 
