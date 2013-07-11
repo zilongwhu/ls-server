@@ -37,18 +37,24 @@ struct ls_server
     int _idle_timeout;
     void *_user_arg;
     epex_t _epoll;
-    LS_SRV_CALLBACK_FUN _proc;
+    LS_SRV_CALLBACK_FUN _callback;
+    LS_SRV_ON_PROCESS_FUN _on_process;
     LS_SRV_ON_ACCEPT_FUN _on_accept;
     LS_SRV_ON_INIT_FUN _on_init;
     LS_SRV_ON_CLOSE_FUN _on_close;
     netresult_t _results[256];
 };
 
-ls_srv_t ls_srv_create(int size, LS_SRV_CALLBACK_FUN proc, LS_SRV_ON_ACCEPT_FUN on_accept, LS_SRV_ON_INIT_FUN on_init, LS_SRV_ON_CLOSE_FUN on_close)
+ls_srv_t ls_srv_create(int size,
+        LS_SRV_ON_PROCESS_FUN on_process,
+        LS_SRV_ON_ACCEPT_FUN on_accept,
+        LS_SRV_ON_INIT_FUN on_init,
+        LS_SRV_ON_CLOSE_FUN on_close)
 {
-    if ( size <= 0 || NULL == proc || NULL == on_accept || NULL == on_init || NULL == on_close )
+    if ( size <= 0 || NULL == on_process || NULL == on_accept || NULL == on_init || NULL == on_close )
     {
-        WARNING("invalid args: size[%d], proc[%p], on accept[%p], on init[%p], on close[%p].", size, proc, on_accept, on_init, on_close);
+        WARNING("invalid args: size[%d], on process[%p], on accept[%p], on init[%p], on close[%p].",
+                size, on_process, on_accept, on_init, on_close);
         return NULL;
     }
     struct ls_server *srv = (struct ls_server *)calloc(1, sizeof(struct ls_server));
@@ -67,11 +73,23 @@ ls_srv_t ls_srv_create(int size, LS_SRV_CALLBACK_FUN proc, LS_SRV_ON_ACCEPT_FUN 
     srv->_listen_fd = -1;
     srv->_status = SERVER_NOT_INIT;
     srv->_idle_timeout = -1;
-    srv->_proc = proc;
+    srv->_callback = NULL;
+    srv->_on_process = on_process;
     srv->_on_accept = on_accept;
     srv->_on_init = on_init;
     srv->_on_close = on_close;
     return srv;
+}
+
+void ls_srv_set_callback(ls_srv_t server, LS_SRV_CALLBACK_FUN callback)
+{
+    if ( NULL == server )
+    {
+        WARNING("invalid args: server[%p].", server);
+        return ;
+    }
+    struct ls_server *srv = (struct ls_server *)server;
+    srv->_callback = callback;
 }
 
 void ls_srv_set_userarg(ls_srv_t server, void *userarg)
@@ -202,6 +220,48 @@ int ls_srv_set_idle_timeout(ls_srv_t server, int timeout)
     return 0;
 }
 
+int ls_srv_enable_notify(ls_srv_t server, int sock_fd)
+{
+    if ( NULL == server )
+    {
+        WARNING("invalid args: server[%p].", server);
+        return -1;
+    }
+    struct ls_server *srv = (struct ls_server *)server;
+    if ( SERVER_NOT_INIT == srv->_status )
+    {
+        WARNING("server is not init.");
+        return -1;
+    }
+    if ( !epex_enable_notify(srv->_epoll, sock_fd) )
+    {
+        WARNING("epex_enable_nofity return false.");
+        return -1;
+    }
+    return 0;
+}
+
+int ls_srv_disable_notify(ls_srv_t server, int sock_fd)
+{
+    if ( NULL == server )
+    {
+        WARNING("invalid args: server[%p].", server);
+        return -1;
+    }
+    struct ls_server *srv = (struct ls_server *)server;
+    if ( SERVER_NOT_INIT == srv->_status )
+    {
+        WARNING("server is not init.");
+        return -1;
+    }
+    if ( !epex_disable_notify(srv->_epoll, sock_fd) )
+    {
+        WARNING("epex_disable_nofity return false.");
+        return -1;
+    }
+    return 0;
+}
+
 int ls_srv_read(ls_srv_t server, int sock_fd, void *buf, size_t size, void *user_arg, int ms)
 {
     if ( NULL == server )
@@ -286,6 +346,10 @@ void ls_srv_run(ls_srv_t server)
     netresult_t result;
     do
     {
+        if (srv->_callback)
+        {
+            srv->_callback(server);
+        }
         cnt = epex_poll(srv->_epoll, srv->_results, 256);
         for ( i = 0; i < cnt; ++i )
         {
@@ -373,7 +437,7 @@ void ls_srv_run(ls_srv_t server)
                 }
                 else
                 {
-                    ret = srv->_proc(srv, &result);
+                    ret = srv->_on_process(srv, &result);
                     if (ret < 0)
                     {
                         DEBUG("exec detach sock[%d].", sock);
