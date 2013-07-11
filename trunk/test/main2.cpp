@@ -76,26 +76,6 @@ class SimpleConn: public Connection
             _res_head._body_len = _req_head._body_len;
             return 0;
         }
-        int on_timeout()
-        {
-            return -1;
-        }
-        int on_idle()
-        {
-            return -1;
-        }
-        int on_error()
-        {
-            return -1;
-        }
-        int on_peer_close()
-        {
-            return -1;
-        }
-        int on_close()
-        {
-            return 0;
-        }
     private:
         char *_req_buf;
         char *_res_buf;
