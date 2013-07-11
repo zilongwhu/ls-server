@@ -78,32 +78,7 @@ class Connection
         Server *_server;
 };
 
-class Worker
-{
-    private:
-        Worker(const Worker &);
-        Worker &operator =(const Worker &);
-    public:
-        Worker();
-        ~Worker();
-
-        void set_server(Server *server) { _server = server; }
-
-        bool start();
-        void stop();
-        void join();
-        void run();
-
-        void append_conn(Connection *conn);
-    private:
-        bool _running;
-        bool _stopped;
-        Server *_server;
-        pthread_t _thread_id;
-        pthread_mutex_t _mutex;
-        pthread_cond_t _cond;
-        __dlist_t _queue;
-};
+class Worker;
 
 class Server
 {
