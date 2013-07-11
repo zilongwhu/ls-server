@@ -262,6 +262,23 @@ int ls_srv_disable_notify(ls_srv_t server, int sock_fd)
     return 0;
 }
 
+void ls_srv_close_sock(ls_srv_t server, int sock_fd)
+{
+    if ( NULL == server )
+    {
+        WARNING("invalid args: server[%p].", server);
+        return ;
+    }
+    struct ls_server *srv = (struct ls_server *)server;
+    if ( SERVER_NOT_INIT == srv->_status )
+    {
+        WARNING("server is not init.");
+        return ;
+    }
+    DEBUG("closing sock[%d], exec detach.", sock_fd);
+    epex_detach(srv->_epoll, sock_fd, NULL);
+}
+
 int ls_srv_read(ls_srv_t server, int sock_fd, void *buf, size_t size, void *user_arg, int ms)
 {
     if ( NULL == server )

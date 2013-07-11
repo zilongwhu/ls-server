@@ -62,6 +62,8 @@ class Connection
             ST_READING_REQUEST_HEAD,
             ST_READING_REQUEST_BODY,
             ST_PROCESSING_REQUEST,
+            ST_PROCESSING_REQUEST_OK,
+            ST_PROCESSING_REQUEST_FAIL,
             ST_WRITING_RESPONSE_HEAD,
             ST_WRITING_RESPONSE_BODY,
         };
@@ -74,6 +76,33 @@ class Connection
         __dlist_t _list;
 
         Server *_server;
+};
+
+class Worker
+{
+    private:
+        Worker(const Worker &);
+        Worker &operator =(const Worker &);
+    public:
+        Worker();
+        ~Worker();
+
+        void set_server(Server *server) { _server = server; }
+
+        bool start();
+        void stop();
+        void join();
+        void run();
+
+        void append_conn(Connection *conn);
+    private:
+        bool _running;
+        bool _stopped;
+        Server *_server;
+        pthread_t _thread_id;
+        pthread_mutex_t _mutex;
+        pthread_cond_t _cond;
+        __dlist_t _queue;
 };
 
 class Server
@@ -102,11 +131,13 @@ class Server
             return ls_srv_listen(_server, addr, addrlen, backlog);
         }
 
-        void run() { ls_srv_run(_server); }
-        void stop() { ls_srv_stop(_server); }
+        void run(int worker_num = 3);
+        void stop();
 
         virtual Connection *on_accept(int sock) = 0;
         virtual void free_conn(Connection *conn) = 0;
+
+        void on_process(Connection *conn);
 
         void append_conn(Connection *conn);
         void get_processed_conns(__dlist_t &conns);
@@ -117,13 +148,18 @@ class Server
             int _read_timeout;
             int _write_timeout;
             int _sock_num_hint;
+            int _worker_num;
         };
         struct
         {
             pthread_mutex_t _mutex;
             __dlist_t _queue;
         };
+
         ls_srv_t _server;
+
+        int _running_worker_num;
+        Worker *_workers;
 };
 
 #endif

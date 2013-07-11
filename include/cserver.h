@@ -42,6 +42,7 @@ int ls_srv_set_listen_fd(ls_srv_t server, int listen_fd);
 
 int ls_srv_enable_notify(ls_srv_t server, int sock_fd);
 int ls_srv_disable_notify(ls_srv_t server, int sock_fd);
+void ls_srv_close_sock(ls_srv_t server, int sock_fd);
 
 int ls_srv_read(ls_srv_t server, int sock_fd, void *buf, size_t size, void *user_arg, int ms);
 int ls_srv_read_any(ls_srv_t server, int sock_fd, void *buf, size_t size, void *user_arg, int ms);
