@@ -74,6 +74,7 @@ class SimpleConn: public Connection
                 _res_buf[i] = ::tolower(_req_buf[i]);
             }
             _res_head._body_len = _req_head._body_len;
+            sleep(1);
             return 0;
         }
     private:
@@ -103,8 +104,8 @@ int main(int argc, char *argv[])
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
     SimpleServer ss;
-    ss.set_idle_timeout(10);
-    ss.set_read_timeout(100);
+    ss.set_idle_timeout(100);
+    ss.set_read_timeout(150);
     ss.listen((struct sockaddr *)&addr, sizeof addr, 5);
     ss.run();
 
