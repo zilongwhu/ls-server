@@ -309,6 +309,7 @@ void Server::run(int worker_num)
         return ;
     }
     _worker_num = worker_num;
+    ls_srv_set_idle_timeout(_server, _idle_timeout);
     ls_srv_run(_server);
     NOTICE("start server ok, worker_num[%d], running_worker_num[%d].",
             _worker_num, _running_worker_num);
