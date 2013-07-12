@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
     reqhead._body_len = len;
     write(sock, &reqhead, sizeof reqhead);
     write(sock, buf, len - 10);
-//    sleep(1);
+    sleep(1);
     write(sock, buf + len - 10, 10);
     read(sock, &reshead, sizeof reshead);
     if (reshead._body_len != len)

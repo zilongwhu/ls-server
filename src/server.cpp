@@ -16,7 +16,6 @@
  * =====================================================================================
  */
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
 #include <new>
 #include "log.h"
@@ -120,6 +119,14 @@ static int Server_on_proc(ls_srv_t server, const netresult_t *net)
     DEBUG("sock[%d], status = %hhd", sock, conn->_status);
     switch (net->_status)
     {
+        case NET_EIDLE:
+            TRACE("sock[%d] becomes idle", sock);
+            conn->on_idle();
+            return 0;
+        case NET_ERROR:
+            TRACE("sock[%d] has error[%s]", sock, strerror_t(net->_errno));
+            conn->on_error();
+            return 0;
         case NET_ECLOSED:
             TRACE("sock[%d] is closed by peer", sock);
             return conn->on_peer_close();
@@ -128,13 +135,8 @@ static int Server_on_proc(ls_srv_t server, const netresult_t *net)
                 TRACE("read timeout on sock[%d]", sock);
             else
                 TRACE("write timeout on sock[%d]", sock);
-            return conn->on_timeout();
-        case NET_EIDLE:
-            TRACE("sock[%d] becomes idle", sock);
-            return conn->on_idle();
-        case NET_ERROR:
-            TRACE("sock[%d] has error[%s]", sock, strerror_t(net->_errno));
-            return conn->on_error();
+            conn->on_timeout();
+            return -1;
         case NET_DONE:
             break;
         default:
@@ -235,9 +237,12 @@ static int Server_on_close(ls_srv_t server, int sock, void *user_args)
 {
     Server *ps = (Server *)ls_srv_get_userarg(server);
     Connection *conn = (Connection *)user_args;
-    int ret = conn->on_close();
-    ps->free_conn(conn);
-    return ret;
+    if (conn)
+    {
+        conn->on_close();
+        ps->free_conn(conn);
+    }
+    return 0;
 }
 
 Server::Server(int sock_num_hint)
@@ -331,7 +336,7 @@ void Server::on_process(Connection *conn)
 {
     if (_running_worker_num > 0)
     {
-        _workers[rand()%_running_worker_num].append_conn(conn);
+        _workers[conn->_sock_fd%_running_worker_num].append_conn(conn);
     }
 }
 

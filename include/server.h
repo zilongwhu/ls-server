@@ -48,11 +48,11 @@ class Connection
         virtual int on_init(Server *server, int sock_fd);
 
         virtual int on_process() = 0;
-        virtual int on_timeout() { return -1; }
-        virtual int on_idle() { return -1; }
-        virtual int on_error() { return -1; }
+        virtual void on_timeout() { }
+        virtual void on_idle() { }
+        virtual void on_error() { }
         virtual int on_peer_close() { return -1; }
-        virtual int on_close() { return 0; }
+        virtual void on_close() { }
     public:
         enum
         {
