@@ -446,7 +446,7 @@ void ls_srv_run(ls_srv_t server)
                     }
                     else
                     {
-                        WARNING("sock[%d] is detached.", sock);
+                        DEBUG("sock[%d] is detached.", sock);
                     }
                     DEBUG("exec close sock[%d].", sock);
                     srv->_on_close(srv, sock, result._user_ptr2);
