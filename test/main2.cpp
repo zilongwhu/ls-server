@@ -17,7 +17,7 @@
  */
 
 #include "log.h"
-#include "server.h"
+#include "server_manager.h"
 #include <ctype.h>
 #include <stdlib.h>
 #include <strings.h>
@@ -88,9 +88,11 @@ class SimpleConn: public Connection
         char *_res_buf;
 };
 
-class SimpleServer: public Server
+class SimpleServer: public ServerManager
 {
     public:
+        SimpleServer(): ServerManager(2) { }
+
         Connection *on_accept(int sock)
         {
             return new SimpleConn;
