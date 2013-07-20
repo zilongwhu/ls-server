@@ -299,6 +299,11 @@ bool NetWorker::start()
     return true;
 }
 
+void NetWorker::stop()
+{
+    ls_srv_stop(_server);
+}
+
 void NetWorker::join()
 {
     if (_running)
@@ -306,4 +311,10 @@ void NetWorker::join()
         pthread_join(_thread_id, NULL);
         _running = false;
     }
+}
+
+void NetWorker::run()
+{
+    NOTICE("net worker is running now.");
+    ls_srv_run(_server);
 }

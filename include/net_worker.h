@@ -43,9 +43,9 @@ class NetWorker
         void set_idle_timeout(int tm) { ls_srv_set_idle_timeout(_server, tm); }
 
         bool start();
-        void stop() { ls_srv_stop(_server); }
+        void stop();
         void join();
-        void run() { ls_srv_run(_server); }
+        void run();
 
         virtual void on_process(Connection *conn);
 
