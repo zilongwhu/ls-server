@@ -91,8 +91,6 @@ class SimpleConn: public Connection
 class SimpleServer: public ServerManager
 {
     public:
-        SimpleServer(): ServerManager(2) { }
-
         Connection *on_accept(int sock)
         {
             return new SimpleConn;
@@ -114,8 +112,10 @@ int main(int argc, char *argv[])
     SimpleServer ss;
     ss.set_idle_timeout(1000);
     ss.set_read_timeout(150);
-    ss.listen((struct sockaddr *)&addr, sizeof addr, 5);
-    ss.run();
-
+    ss.init(atoi(argv[1]), atoi(argv[2]));
+    if (ss.run((struct sockaddr *)&addr, sizeof addr, 5) == 0)
+    {
+        while (1) sleep(10);
+    }
     return 0;
 }

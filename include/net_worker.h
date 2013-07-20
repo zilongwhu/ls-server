@@ -32,7 +32,7 @@ class NetWorker
         NetWorker &operator =(const NetWorker &);
     public:
         NetWorker(int num = 1024);
-        ~NetWorker();
+        virtual ~NetWorker();
 
         void set_servermanager(ServerManager *sm) { _server_manager = sm; }
         ServerManager *get_servermanager() { return _server_manager; }
