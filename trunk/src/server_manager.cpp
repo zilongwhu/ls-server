@@ -27,28 +27,14 @@
 #include "error.h"
 #include "server_manager.h"
 
-ServerManager::ServerManager(int net_worker_num, int sock_num_hint)
+ServerManager::ServerManager()
 {
-    _net_worker_num = net_worker_num;
-    if (_net_worker_num < 1)
-        _net_worker_num = 1;
-    if (_net_worker_num > 127)
-        _net_worker_num = 127;
-    _sock_num_hint = sock_num_hint;
-    if (_sock_num_hint < 1024)
-        _sock_num_hint = 1024;
     _idle_timeout = _read_timeout = _write_timeout = -1;
-    _worker_num = 3;
-    _running_worker_num = 0;
+    _sock_num_hint = 1024;
+    _worker_num = 5;
+    _net_worker_num = 1;
     _listen_fd = -1;
-    _nets = (NetWorker *)malloc(sizeof(NetWorker)*_net_worker_num);
-    if (_nets)
-    {
-        for (int i = 0; i < _net_worker_num; ++i)
-        {
-            new (_nets + i) NetWorker(_sock_num_hint);
-        }
-    }
+    _nets = NULL;
     _workers = NULL;
 }
 
@@ -60,27 +46,84 @@ ServerManager::~ServerManager()
         {
             _nets[i].~NetWorker();
         }
+        free(_nets);
         _nets = NULL;
     }
-    _net_worker_num = 0;
-    _sock_num_hint = 0;
+    if (_workers)
+    {
+        delete [] _workers;
+        _workers = NULL;
+    }
     _idle_timeout = _read_timeout = _write_timeout = -1;
+    _sock_num_hint = 0;
     _worker_num = 0;
-    _running_worker_num = 0;
+    _net_worker_num = 0;
     SAFE_CLOSE(_listen_fd);
     _listen_fd = -1;
-    _workers = NULL;
 }
 
-int ServerManager::listen(const struct sockaddr *addr, socklen_t addrlen, int backlog)
+int ServerManager::init(int worker_num, int net_worker_num)
 {
+    if (worker_num <= 0)
+        worker_num = 1;
+    if (worker_num >= 0x7FFF)
+        worker_num = 0x7FFF;
+    if (net_worker_num <= 0)
+        net_worker_num = 1;
+    if (net_worker_num >= 0x7F)
+        net_worker_num = 0x7F;
+    if (_nets || _workers)
+    {
+        WARNING("already init, cannot do again.");
+        return -1;
+    }
+    NOTICE("worker_num=%d, net_worker_num=%d.", worker_num, net_worker_num);
+    _nets = (NetWorker *)malloc(sizeof(NetWorker)*net_worker_num);
     if (NULL == _nets)
     {
-        WARNING("not init net_workers.");
+        WARNING("failed to alloc mem for net_workers[%d].", net_worker_num);
+        return -1;
+    }
+    for (int i = 0; i < net_worker_num; ++i)
+    {
+        new (_nets + i) NetWorker(_sock_num_hint);
+        _nets[i].set_id(i);
+        _nets[i].set_servermanager(this);
+    }
+    _workers = new(std::nothrow) Worker[worker_num];
+    if (NULL == _workers)
+    {
+        for (int i = 0; i < net_worker_num; ++i)
+        {
+            _nets[i].~NetWorker();
+        }
+        free(_nets);
+        _nets = NULL;
+        WARNING("failed to new Workers[%d].", worker_num);
+        return -1;
+    }
+    for (int i = 0; i < worker_num; ++i)
+    {
+        _workers[i].set_servermanager(this);
+    }
+    _worker_num = worker_num;
+    _net_worker_num = net_worker_num;
+    NOTICE("init ok, worker_num=%d, net_worker_num=%d.", _worker_num, _net_worker_num);
+    return 0;
+}
+
+int ServerManager::run(const struct sockaddr *addr, socklen_t addrlen, int backlog)
+{
+    if (!(_nets && _workers))
+    {
+        WARNING("not init yet.");
         return -1;
     }
     if (_listen_fd >= 0)
+    {
+        WARNING("server is already running.");
         return 0;
+    }
     _listen_fd = ::socket(AF_INET, SOCK_STREAM, 0);
     if ( _listen_fd < 0 )
     {
@@ -89,87 +132,49 @@ int ServerManager::listen(const struct sockaddr *addr, socklen_t addrlen, int ba
     }
     if ( ::bind(_listen_fd, addr, addrlen) < 0 )
     {
-        WARNING("failed to bind socket, error[%d].", errno);
-        goto FAIL;
+        WARNING("failed to bind socket[%d], error[%d].", _listen_fd, errno);
+        SAFE_CLOSE(_listen_fd);
+        _listen_fd = -1;
+        return -1;
     }
     if ( ::listen(_listen_fd, backlog) < 0 )
     {
         WARNING("failed to listen sock[%d], error[%d].", _listen_fd, errno);
-        goto FAIL;
+        SAFE_CLOSE(_listen_fd);
+        _listen_fd = -1;
+        return -1;
     }
-    for (int i = 0; i < _net_worker_num; ++i)
+    int i;
+    for (i = 0; i < _worker_num; ++i)
     {
-        _nets[i].listen(_listen_fd);
-    }
-    return 0;
-FAIL:
-    SAFE_CLOSE(_listen_fd);
-    _listen_fd = -1;
-    return -1;
-}
-
-void ServerManager::run(int worker_num)
-{
-    if (NULL == _nets)
-    {
-        WARNING("not init net_workers.");
-        return ;
-    }
-    if (_running_worker_num > 0)
-        return ;
-    if (worker_num <= 0)
-        worker_num = 3;
-    _workers = new(std::nothrow) Worker[worker_num];
-    if (NULL == _workers)
-    {
-        WARNING("failed to new Workers[%d].", worker_num);
-        return ;
-    }
-    for (_running_worker_num = 0;
-            _running_worker_num < worker_num;
-            ++_running_worker_num)
-    {
-        _workers[_running_worker_num].set_servermanager(this);
-        if (!_workers[_running_worker_num].start())
+        if (!_workers[i].start())
         {
-            WARNING("failed to start worker[%d], need start %d workers.",
-                    _running_worker_num, _worker_num);
-            break;
+            WARNING("failed to start worker[%d].", i);
+            goto FAIL;
         }
     }
-    if (_running_worker_num <= 0)
-    {
-        delete [] _workers;
-        _workers = NULL;
-        WARNING("failed to start Workers[%d].", worker_num);
-        return ;
-    }
-    _worker_num = worker_num;
-    int i;
     for (i = 0; i < _net_worker_num; ++i)
     {
-        _nets[i].set_id(i);
-        _nets[i].set_servermanager(this);
+        _nets[i].listen(_listen_fd);
         _nets[i].set_idle_timeout(_idle_timeout);
         if (!_nets[i].start())
         {
             WARNING("failed to start net_worker[%d].", i);
-            break;
+            goto FAIL;
         }
     }
-    if (i <= 0)
+    if (0)
     {
+FAIL:
         this->stop();
-        return ;
+        return -1;
     }
-    NOTICE("start server ok, net_worker_num[%d], worker_num[%d], running_worker_num[%d].",
-            i, _worker_num, _running_worker_num);
+    NOTICE("start server ok, worker_num[%d], net_worker_num[%d].", _worker_num, _net_worker_num);
+    return 0;
 }
 
 void ServerManager::stop()
 {
-    if (_running_worker_num <= 0)
-        return ;
     if (_nets)
     {
         for (int i = 0; i < _net_worker_num; ++i)
@@ -180,27 +185,28 @@ void ServerManager::stop()
     }
     if (_workers)
     {
-        for (int i = 0; i < _running_worker_num; ++i)
+        for (int i = 0; i < _worker_num; ++i)
         {
             _workers[i].stop();
             _workers[i].join();
         }
-        delete [] _workers;
-        _workers = NULL;
     }
-    _running_worker_num = 0;
+    SAFE_CLOSE(_listen_fd);
+    _listen_fd = -1;
 }
 
 void ServerManager::post(Connection *conn)
 {
-    if (conn && _running_worker_num > 0)
+    if (conn)
     {
-        _workers[conn->_idx % _running_worker_num].post(conn);
+        _workers[conn->_idx % _worker_num].post(conn);
     }
 }
 
 void ServerManager::done(Connection *conn)
 {
-    if (!conn || !_nets || conn->_net_idx >= _net_worker_num) return ;
-    _nets[conn->_net_idx].done(conn);
+    if (conn)
+    {
+        _nets[conn->_net_idx].done(conn);
+    }
 }

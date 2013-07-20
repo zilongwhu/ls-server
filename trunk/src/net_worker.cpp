@@ -284,6 +284,11 @@ static void *net_worker_run(void *arg)
 bool NetWorker::start()
 {
     if (_running) return true;
+    if (NULL == _server)
+    {
+        WARNING("failed to create _server [NULL].");
+        return false;
+    }
     int ret = pthread_create(&_thread_id, NULL, net_worker_run, this);
     if (ret)
     {
