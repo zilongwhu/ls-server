@@ -27,25 +27,6 @@ class SimpleServer;
 class SimpleConn: public Connection
 {
     public:
-        SimpleConn()
-        {
-            _req_buf = NULL;
-            _res_buf = NULL;
-        }
-        ~ SimpleConn()
-        {
-            if (_req_buf)
-            {
-                free(_req_buf);
-                _req_buf = NULL;
-            }
-            if (_res_buf)
-            {
-                free(_res_buf);
-                _res_buf = NULL;
-            }
-        }
-
         int on_peer_close()
         {
             WARNING("peer closing sock[%d].", _sock_fd);
@@ -59,7 +40,6 @@ class SimpleConn: public Connection
                 WARNING("too long body len[%u]", _req_head._body_len);
                 return NULL;
             }
-            _req_buf = (char *)malloc(_req_head._body_len);
             return _req_buf;
         }
         void *get_response_buffer()
@@ -69,12 +49,6 @@ class SimpleConn: public Connection
 
         int on_process()
         {
-            _res_buf = (char *)malloc(_req_head._body_len);
-            if (NULL == _res_buf)
-            {
-                WARNING("failed to alloc mem for _res_buf");
-                return -1;
-            }
             for (unsigned int i = 0; i < _req_head._body_len; ++i)
             {
                 _res_buf[i] = ::tolower(_req_buf[i]);
@@ -84,8 +58,8 @@ class SimpleConn: public Connection
             return 0;
         }
     private:
-        char *_req_buf;
-        char *_res_buf;
+        char _req_buf[1024];
+        char _res_buf[1024];
 };
 
 class SimpleServer: public ServerManager
