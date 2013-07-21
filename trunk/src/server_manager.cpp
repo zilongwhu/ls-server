@@ -129,19 +129,19 @@ int ServerManager::run(const struct sockaddr *addr, socklen_t addrlen, int backl
     _listen_fd = ::socket(AF_INET, SOCK_STREAM, 0);
     if ( _listen_fd < 0 )
     {
-        WARNING("failed to create socket, error[%d].", errno);
+        WARNING("failed to create socket, error[%s].", strerror_t(errno));
         return -1;
     }
     if ( ::bind(_listen_fd, addr, addrlen) < 0 )
     {
-        WARNING("failed to bind socket[%d], error[%d].", _listen_fd, errno);
+        WARNING("failed to bind socket[%d], error[%s].", _listen_fd, strerror_t(errno));
         SAFE_CLOSE(_listen_fd);
         _listen_fd = -1;
         return -1;
     }
     if ( ::listen(_listen_fd, backlog) < 0 )
     {
-        WARNING("failed to listen sock[%d], error[%d].", _listen_fd, errno);
+        WARNING("failed to listen sock[%d], error[%s].", _listen_fd, strerror_t(errno));
         SAFE_CLOSE(_listen_fd);
         _listen_fd = -1;
         return -1;

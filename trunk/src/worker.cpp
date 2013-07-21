@@ -18,6 +18,7 @@
 
 #include "log.h"
 #include "utils.h"
+#include "error.h"
 #include "worker.h"
 #include "connection.h"
 #include "server_manager.h"
@@ -58,7 +59,7 @@ bool Worker::start()
     int ret = pthread_create(&_thread_id, NULL, worker_run, this);
     if (ret)
     {
-        WARNING("failed to create worker thread, err=%d.", ret);
+        WARNING("failed to create worker thread, err=[%d, %s].", ret, strerror_t(ret));
         return false;
     }
     _running = true;
