@@ -169,8 +169,16 @@ int NetWorker::on_proc(ls_srv_t server, const netresult_t *net)
                             NULL, ps->write_timeout());
                 case Connection::ST_WRITING_RESPONSE_BODY:
                     conn->_status = Connection::ST_WAITING_REQUEST;
-                    TRACE("send res_body to sock[%d] ok, waiting for request again", sock);
-                    return ls_srv_read(server, sock, NULL, 0, NULL, -1);
+                    if (ps->is_short())
+                    {
+                        TRACE("send res_body to sock[%d] ok, close short conn", sock);
+                        return -1;
+                    }
+                    else
+                    {
+                        TRACE("send res_body to sock[%d] ok, waiting for request again", sock);
+                        return ls_srv_read(server, sock, NULL, 0, NULL, -1);
+                    }
             }
             WARNING("invalid status[%hhd] for sock[%d] when op_type=NET_OP_WRITE",
                     conn->_status, sock);

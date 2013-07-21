@@ -30,6 +30,7 @@
 ServerManager::ServerManager()
 {
     _idle_timeout = _read_timeout = _write_timeout = -1;
+    _is_short = false;
     _sock_num_hint = 1024;
     _worker_num = 5;
     _net_worker_num = 1;
@@ -55,6 +56,7 @@ ServerManager::~ServerManager()
         _workers = NULL;
     }
     _idle_timeout = _read_timeout = _write_timeout = -1;
+    _is_short = false;
     _sock_num_hint = 0;
     _worker_num = 0;
     _net_worker_num = 0;
