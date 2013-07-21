@@ -36,11 +36,13 @@ class ServerManager
         int read_timeout() const { return _read_timeout; }
         int write_timeout() const { return _write_timeout; }
         int idle_timeout() const { return _idle_timeout; }
+        bool is_short() const { return _is_short; }
 
-        void set_sock_num(int sock_num) { _sock_num_hint = sock_num; }
         void set_read_timeout(int read_timeout) { _read_timeout = read_timeout; }
         void set_write_timeout(int write_timeout) { _write_timeout = write_timeout; }
         void set_idle_timeout(int idle_timeout) { _idle_timeout = idle_timeout; }
+        void set_short_only() { _is_short = true; }
+        void set_sock_num(int sock_num) { _sock_num_hint = sock_num; }
 
         int init(int worker_num, int net_worker_num = 1);
         int run(const struct sockaddr *addr, socklen_t addrlen, int backlog);
@@ -60,6 +62,8 @@ class ServerManager
             int _idle_timeout;
             int _read_timeout;
             int _write_timeout;
+
+            bool _is_short;
 
             int _sock_num_hint;
 
