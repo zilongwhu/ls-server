@@ -57,19 +57,19 @@ int NetWorker::callback(ls_srv_t server)
         sock = conn->_sock_fd;
         if (ls_srv_enable_notify(server, sock) < 0)
         {
-            FATAL("sock[%d] is processed, but failed to enable notification", sock);
+            FATAL("sock[%d] is processed, but failed to enable notification.", sock);
         }
         if (conn->_status == Connection::ST_PROCESSING_REQUEST_OK)
         {
             conn->_res_head._magic_num = MAGIC_NUM;
             conn->_status = Connection::ST_WRITING_RESPONSE_HEAD;
-            TRACE("process request for sock[%d] ok, try to write conn->_res_head", sock);
+            TRACE("process request for sock[%d] ok, try to write conn->_res_head.", sock);
             ls_srv_write(server, sock, &conn->_res_head, sizeof conn->_res_head,
                     NULL, ps->write_timeout());
         }
         else
         {
-            TRACE("failed to process request for sock[%d], closing it", sock);
+            TRACE("failed to process request for sock[%d], closing it.", sock);
             ls_srv_close_sock(server, sock);
         }
     }
@@ -82,31 +82,31 @@ int NetWorker::on_proc(ls_srv_t server, const netresult_t *net)
     ServerManager *ps = nw->get_servermanager();
     Connection *conn = (Connection *)net->_user_ptr2;
     int sock = net->_sock_fd;
-    DEBUG("sock[%d], status = %hhd", sock, conn->_status);
+    DEBUG("sock[%d], status = %hhd.", sock, conn->_status);
     switch (net->_status)
     {
         case NET_EIDLE:
-            TRACE("sock[%d] becomes idle", sock);
+            TRACE("sock[%d] becomes idle.", sock);
             conn->on_idle();
             return 0;
         case NET_ERROR:
-            TRACE("sock[%d] has error[%s]", sock, strerror_t(net->_errno));
+            TRACE("sock[%d] has error[%s].", sock, strerror_t(net->_errno));
             conn->on_error();
             return 0;
         case NET_ECLOSED:
-            TRACE("sock[%d] is closed by peer", sock);
+            TRACE("sock[%d] is closed by peer.", sock);
             return conn->on_peer_close();
         case NET_ETIMEOUT:
             if (net->_op_type == NET_OP_READ)
-                TRACE("read timeout on sock[%d]", sock);
+                TRACE("read timeout on sock[%d].", sock);
             else
-                TRACE("write timeout on sock[%d]", sock);
+                TRACE("write timeout on sock[%d].", sock);
             conn->on_timeout();
             return -1;
         case NET_DONE:
             break;
         default:
-            WARNING("invalid net status[%hd]", net->_status);
+            WARNING("invalid net status[%hd], sock=%d.", net->_status, sock);
             return -1;
     }
     void *buf;
@@ -117,39 +117,39 @@ int NetWorker::on_proc(ls_srv_t server, const netresult_t *net)
             {
                 case Connection::ST_WAITING_REQUEST:
                     conn->_status = Connection::ST_READING_REQUEST_HEAD;
-                    TRACE("sock[%d] become readable, try to read conn->_req_head", sock);
+                    TRACE("sock[%d] become readable, try to read conn->_req_head.", sock);
                     return ls_srv_read(server, sock, &conn->_req_head, sizeof conn->_req_head,
                             NULL, ps->read_timeout());
                 case Connection::ST_READING_REQUEST_HEAD:
                     if (conn->_req_head._magic_num != MAGIC_NUM)
                     {
-                        WARNING("failed to chek magic num for sock[%d]", sock);
+                        WARNING("failed to chek magic num for sock[%d].", sock);
                         return -1;
                     }
                     buf = conn->get_request_buffer();
                     if (buf == NULL)
                     {
-                        WARNING("failed to get request buffer for sock[%d]", sock);
+                        WARNING("failed to get request buffer for sock[%d].", sock);
                         return -1;
                     }
                     conn->_status = Connection::ST_READING_REQUEST_BODY;
-                    TRACE("read conn->_req_head from sock[%d] ok, try to read req_body[%u]",
+                    TRACE("read conn->_req_head from sock[%d] ok, try to read req_body[%u].",
                             sock, conn->_req_head._body_len);
                     return ls_srv_read(server, sock, buf, conn->_req_head._body_len,
                             NULL, ps->read_timeout());
                 case Connection::ST_READING_REQUEST_BODY:
                     conn->_status = Connection::ST_PROCESSING_REQUEST;
-                    TRACE("read req_body[%u] for sock[%d] ok, try to process conn",
+                    TRACE("read req_body[%u] for sock[%d] ok, try to process conn.",
                             conn->_req_head._body_len, sock);
                     if (ls_srv_disable_notify(server, sock) < 0)
                     {
-                        WARNING("failed to disable notification for sock[%d]", sock);
+                        WARNING("failed to disable notification for sock[%d].", sock);
                         return -1;
                     }
                     nw->on_process(conn);
                     return 0;
             }
-            WARNING("invalid status[%hhd] for sock[%d] when op_type=NET_OP_READ",
+            WARNING("invalid status[%hhd] for sock[%d] when op_type=NET_OP_READ.",
                     conn->_status, sock);
             return -1;
         case NET_OP_WRITE:
@@ -159,11 +159,11 @@ int NetWorker::on_proc(ls_srv_t server, const netresult_t *net)
                     buf = conn->get_response_buffer();
                     if (buf == NULL)
                     {
-                        WARNING("failed to get response buffer for sock[%d]", sock);
+                        WARNING("failed to get response buffer for sock[%d].", sock);
                         return -1;
                     }
                     conn->_status = Connection::ST_WRITING_RESPONSE_BODY;
-                    TRACE("send conn->_res_head to sock[%d] ok, try to send res_body[%u]",
+                    TRACE("send conn->_res_head to sock[%d] ok, try to send res_body[%u].",
                             sock, conn->_res_head._body_len);
                     return ls_srv_write(server, sock, buf, conn->_res_head._body_len,
                             NULL, ps->write_timeout());
@@ -171,20 +171,20 @@ int NetWorker::on_proc(ls_srv_t server, const netresult_t *net)
                     conn->_status = Connection::ST_WAITING_REQUEST;
                     if (ps->is_short())
                     {
-                        TRACE("send res_body to sock[%d] ok, close short conn", sock);
+                        TRACE("send res_body to sock[%d] ok, close short conn.", sock);
                         return -1;
                     }
                     else
                     {
-                        TRACE("send res_body to sock[%d] ok, waiting for request again", sock);
+                        TRACE("send res_body to sock[%d] ok, waiting for request again.", sock);
                         return ls_srv_read(server, sock, NULL, 0, NULL, -1);
                     }
             }
-            WARNING("invalid status[%hhd] for sock[%d] when op_type=NET_OP_WRITE",
+            WARNING("invalid status[%hhd] for sock[%d] when op_type=NET_OP_WRITE.",
                     conn->_status, sock);
             return -1;
     }
-    WARNING("unexpected op_type[%hd] on sock[%d]", net->_op_type, sock);
+    WARNING("unexpected op_type[%hd] on sock[%d].", net->_op_type, sock);
     return -1;
 }
 
@@ -194,6 +194,7 @@ int NetWorker::on_accept(ls_srv_t server, int sock, void **user_args)
     ServerManager *ps = nw->get_servermanager();
     if ((*user_args = ps->on_accept(sock)))
         return 0;
+    WARNING("failed to accept conn, sock=%d.", sock);
     return -1;
 }
 
@@ -211,11 +212,11 @@ int NetWorker::on_init(ls_srv_t server, int sock, void *user_args)
     int ret = conn->on_init();
     if (ret < 0)
     {
-        WARNING("failed to init conn for sock[%d], ret=%d", sock, ret);
+        WARNING("failed to init conn for sock[%d], ret=%d.", sock, ret);
         return -1;
     }
     conn->_status = Connection::ST_WAITING_REQUEST;
-    TRACE("waiting for request on sock[%d]", sock);
+    TRACE("waiting for request on sock[%d].", sock);
     return ls_srv_read(server, sock, NULL, 0, NULL, -1);
 }
 
@@ -254,7 +255,11 @@ NetWorker::~NetWorker()
     _server = NULL;
     _server_manager = NULL;
     pthread_mutex_destroy(&_mutex);
-    DLIST_REMOVE(&_queue);
+    if (!DLIST_EMPTY(&_queue))
+    {
+        DLIST_REMOVE(&_queue);
+        WARNING("queue of net worker is not empty.");
+    }
     _idx = _seed = 0;
     _running = false;
     _thread_id = 0;
@@ -300,7 +305,7 @@ bool NetWorker::start()
     int ret = pthread_create(&_thread_id, NULL, net_worker_run, this);
     if (ret)
     {
-        WARNING("failed to create net_worker thread, err=%d.", ret);
+        WARNING("failed to create net worker thread, err=[%d, %s].", ret, strerror_t(ret));
         return false;
     }
     _running = true;
@@ -325,4 +330,5 @@ void NetWorker::run()
 {
     NOTICE("net worker is running now.");
     ls_srv_run(_server);
+    NOTICE("stop net worker now.");
 }
